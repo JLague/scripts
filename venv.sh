@@ -11,8 +11,10 @@ fi
 (module -v 2> /dev/null && ! module is-loaded python)
 load_python=$?
 
+echo $load_python
+
 # Load python
-if [ $load_python == "0" ]; then
+if [ "$load_python" -eq "0" ]; then
     echo "Python is not loaded!" 1>&2
     echo "Loading latest version available..."
     module load python
@@ -22,7 +24,7 @@ fi
 python -m venv $1 && source $1/bin/activate
 
 # Unload python if necessary
-if [ $load_python == "0" ]; then
+if [ $load_python -eq "0" ]; then
     echo "Unloading python..."
     module unload python
 fi
