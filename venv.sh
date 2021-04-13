@@ -1,5 +1,15 @@
 #!/bin/sh
 
+# Get a yes or no answer from user
+function yes_or_no {
+    while true; do
+        read -p "$* [y/n]: " yn
+        case $yn in
+            [Yy]*) return 0  ;;
+            [Nn]*) echo "Aborted" ; return  1 ;;
+        esac
+    done
+}
 
 # Check if directory already exist
 if [ -d "$1" ]; then
@@ -29,13 +39,3 @@ if [ $load_python -eq "0" ]; then
     module unload python
 fi
 
-# Get a yes or no answer from user
-function yes_or_no {
-    while true; do
-        read -p "$* [y/n]: " yn
-        case $yn in
-            [Yy]*) return 0  ;;
-            [Nn]*) echo "Aborted" ; return  1 ;;
-        esac
-    done
-}
