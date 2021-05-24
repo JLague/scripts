@@ -1,0 +1,25 @@
+#!/bin/sh
+
+REMOTE_ADDR=horacio
+SSH_RPORT=4001
+LOCAL_ADDR=192.168.0.140
+RPORT=$2
+LPORT=$3
+
+function usage {
+    echo "$0 \"remote|local\" RPORT LPORT"
+}
+
+case $1 in
+    "remote")
+	OPTS="$REMOTE_ADDR -p $SSH_RPORT"
+	;;
+    "local")
+	OPTS=$LOCAL_ADDR
+	;;
+    *)
+	usage && exit 1
+	;;
+esac
+
+ssh -o ExitOnForwardFailure=yes -f -N -L $LPORT:localhost:$RPORT $OPTS
