@@ -1,5 +1,4 @@
 #!/bin/sh
 
-# Mount CVMFS
-sudo mount -t cvmfs cvmfs-config.computecanada.ca   /cvmfs/cvmfs-config.computecanada.ca
-sudo mount -t cvmfs soft.computecanada.ca	    /cvmfs/soft.computecanada.ca
+mount -t cvmfs cvmfs-config.computecanada.ca	/cvmfs/cvmfs-config.computecanada.ca
+mount -t cvmfs soft.computecanada.ca		/cvmfs/soft.computecanada.ca

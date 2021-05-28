@@ -1,4 +1,4 @@
 #!/bin/sh
 
-sudo umount /cvmfs/cvmfs-config.computecanada.ca && echo "Unmounted /cvmfs/cvmfs-config.computecanada.ca"
-sudo umount /cvmfs/soft.computecanada.ca && echo "Unmounted /cvmfs/soft.computecanada.ca"
+umount /cvmfs/cvmfs-config.computecanada.ca && echo "Unmounted /cvmfs/cvmfs-config.computecanada.ca"
+umount /cvmfs/soft.computecanada.ca && echo "Unmounted /cvmfs/soft.computecanada.ca"
