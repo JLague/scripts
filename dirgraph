@@ -1,0 +1,85 @@
+#!/usr/bin/python3
+
+from os.path import dirname
+from pathlib import Path
+import argparse
+import os
+import pygraphviz as pgv
+
+
+DEFAULT_DIR_SHAPE = 'folder'
+DEFAULT_FILE_SHAPE = 'note'
+DEFAULT_NODE_COLOR = '#03A9F4'
+DEFAULT_FILENAME = 'graph.png'
+DEFAULT_DIRECTION = 'LR'
+DEFAULT_GRAPH_NAME = ''
+DEFAULT_SEP = '1.0'
+
+def main():
+    args = get_args()
+    root = Dir(Path(args.dir))
+    graph = pgv.AGraph(ranksep=args.separation, directed=True, rankdir=args.direction)
+    set_attrs(graph, args)
+    graph.add_node(root, label=root.name)
+    populate_graph(root, graph, args.include_files, args.file_shape)
+    graph.draw(args.output, prog='dot')
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Generate a graph of directories.')
+    parser.add_argument('dir', nargs='?', default=os.getcwd(), type=str, help='The directory for which to generate the graph (default: "%(default)s)"')
+    parser.add_argument('-c', '--color', default=DEFAULT_NODE_COLOR, nargs='?', type=str, help='The color of the nodes in the graph (default: "%(default)s)"')
+    parser.add_argument('-n', '--name', default=DEFAULT_GRAPH_NAME, nargs='?', type=str, help='The name of the graph (default: "%(default)s")')
+    parser.add_argument('-i', '--include-files', action='store_true', help='Include files in the generated graph (default: False)')
+    parser.add_argument('-o', '--output', default=DEFAULT_FILENAME, nargs='?', type=str, help='The name of the generated file (default: "%(default)s")')
+    parser.add_argument('-s', '--separation', default=DEFAULT_SEP, nargs='?', type=str, help='The separation between the layers of the graph (default: "%(default)s")')
+    parser.add_argument('-d', '--direction', default=DEFAULT_DIRECTION, nargs='?', type=str, help='The direction of the graph (default: "%(default)s")')
+    parser.add_argument('--file-shape', default=DEFAULT_FILE_SHAPE, nargs='?', type=str, help='The shape of the files (default: "%(default)s")')
+    parser.add_argument('--dir-shape', default=DEFAULT_DIR_SHAPE, nargs='?', type=str, help='The shape of the directories (default: "%(default)s")')
+    return parser.parse_args()
+
+def populate_graph(root, graph, incl_files, file_shape):
+    for child in root.children:
+        is_dir = isinstance(child, Dir)
+        if not is_dir and not incl_files:
+            continue
+        if is_dir:
+            graph.add_node(child, label=child.name)
+            populate_graph(child, graph, incl_files, file_shape)
+        else:
+            graph.add_node(child, label=child.name, shape=file_shape)
+        graph.add_edge(root, child)
+
+def set_attrs(graph, args):
+    node_attrs = {
+        'shape': args.dir_shape,
+        'color': args.color,
+        'style': 'filled'
+    }
+    graph_attrs = {
+        'label': args.name
+    }
+
+    graph.node_attr.update(node_attrs)
+    graph.graph_attr.update(graph_attrs)
+
+class File:
+    def __init__(self, fpath, parent=None):
+        self.name = fpath.name
+        self.fpath = fpath
+        self.parent = parent
+
+
+class Dir(File):
+    def __init__(self, fpath, parent=None):
+        super().__init__(fpath, parent)
+        self.children = self.__get_children()
+
+    def __get_children(self):
+        children = []
+        for file in os.scandir(self.fpath):
+            child_class = Dir if file.is_dir() else File
+            children.append(child_class(self.fpath.joinpath(file.name), self))
+        return children
+
+
+if __name__=="__main__": main()
