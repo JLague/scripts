@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
-from os.path import dirname
 from pathlib import Path
 import argparse
 import os
 import pygraphviz as pgv
 
-
+# Default values for the graph
 DEFAULT_DIR_SHAPE = 'folder'
 DEFAULT_FILE_SHAPE = 'note'
 DEFAULT_NODE_COLOR = '#03A9F4'
@@ -15,41 +14,92 @@ DEFAULT_DIRECTION = 'LR'
 DEFAULT_GRAPH_NAME = ''
 DEFAULT_SEP = '1.0'
 
+
 def main():
+    # Graph setup
     args = get_args()
-    root = Dir(Path(args.dir))
-    graph = pgv.AGraph(ranksep=args.separation, directed=True, rankdir=args.direction)
+    root = Dir(Path(args.dir).absolute())
+    graph = pgv.AGraph(ranksep=args.separation,
+                       directed=True, rankdir=args.direction)
     set_attrs(graph, args)
+
+    # Populate graph
     graph.add_node(root, label=root.name)
     populate_graph(root, graph, args.include_files, args.file_shape)
+
+    # Create output file
     graph.draw(args.output, prog='dot')
 
+
 def get_args():
-    parser = argparse.ArgumentParser(description='Generate a graph of directories.')
-    parser.add_argument('dir', nargs='?', default=os.getcwd(), type=str, help='The directory for which to generate the graph (default: "%(default)s)"')
-    parser.add_argument('-c', '--color', default=DEFAULT_NODE_COLOR, nargs='?', type=str, help='The color of the nodes in the graph (default: "%(default)s)"')
-    parser.add_argument('-n', '--name', default=DEFAULT_GRAPH_NAME, nargs='?', type=str, help='The name of the graph (default: "%(default)s")')
-    parser.add_argument('-i', '--include-files', action='store_true', help='Include files in the generated graph (default: False)')
-    parser.add_argument('-o', '--output', default=DEFAULT_FILENAME, nargs='?', type=str, help='The name of the generated file (default: "%(default)s")')
-    parser.add_argument('-s', '--separation', default=DEFAULT_SEP, nargs='?', type=str, help='The separation between the layers of the graph (default: "%(default)s")')
-    parser.add_argument('-d', '--direction', default=DEFAULT_DIRECTION, nargs='?', type=str, help='The direction of the graph (default: "%(default)s")')
-    parser.add_argument('--file-shape', default=DEFAULT_FILE_SHAPE, nargs='?', type=str, help='The shape of the files (default: "%(default)s")')
-    parser.add_argument('--dir-shape', default=DEFAULT_DIR_SHAPE, nargs='?', type=str, help='The shape of the directories (default: "%(default)s")')
+    """
+    Defines the options that can be passed to the script and parses them
+
+    Returns:
+        namespace: A namespace containing every option.
+    """
+    parser = argparse.ArgumentParser(
+        description='Generate a graph of directories.')
+    parser.add_argument('dir', nargs='?', default=os.getcwd(
+    ), type=str, help='The directory for which to generate the graph (default: "%(default)s)"')
+    parser.add_argument('-c', '--color', default=DEFAULT_NODE_COLOR, nargs='?',
+                        type=str, help='The color of the nodes in the graph (default: "%(default)s)"')
+    parser.add_argument('-n', '--name', default=DEFAULT_GRAPH_NAME, nargs='?',
+                        type=str, help='The name of the graph (default: "%(default)s")')
+    parser.add_argument('-i', '--include-files', action='store_true',
+                        help='Include files in the generated graph (default: False)')
+    parser.add_argument('-o', '--output', default=DEFAULT_FILENAME, nargs='?',
+                        type=str, help='The name of the generated file (default: "%(default)s")')
+    parser.add_argument('-s', '--separation', default=DEFAULT_SEP, nargs='?', type=str,
+                        help='The separation between the layers of the graph (default: "%(default)s")')
+    parser.add_argument('-d', '--direction', default=DEFAULT_DIRECTION, nargs='?',
+                        type=str, help='The direction of the graph (default: "%(default)s")')
+    parser.add_argument('--file-shape', default=DEFAULT_FILE_SHAPE, nargs='?',
+                        type=str, help='The shape of the files (default: "%(default)s")')
+    parser.add_argument('--dir-shape', default=DEFAULT_DIR_SHAPE, nargs='?',
+                        type=str, help='The shape of the directories (default: "%(default)s")')
     return parser.parse_args()
 
+
 def populate_graph(root, graph, incl_files, file_shape):
+    """
+    Recursively populates the graph with the files (if incl_files is set to True) 
+    and directories that are under root.
+
+    Args:
+        root (Dir): The root directory to traverse
+        graph (Agraph): The graph to populate
+        incl_files (bool): If we want to include the files in the graph or not
+        file_shape (str): The shape that the file nodes will have in the generated graph
+    """
     for child in root.children:
-        is_dir = isinstance(child, Dir)
-        if not is_dir and not incl_files:
+        is_file = not isinstance(child, Dir)
+
+        # If the child is a file, but we don't want to keep them
+        if is_file and not incl_files:
             continue
-        if is_dir:
-            graph.add_node(child, label=child.name)
-            populate_graph(child, graph, incl_files, file_shape)
-        else:
+
+        if is_file:
             graph.add_node(child, label=child.name, shape=file_shape)
+        else:  # is dir
+            graph.add_node(child, label=child.name)
+
+            # Recurse over the children of the directory
+            populate_graph(child, graph, incl_files, file_shape)
+
         graph.add_edge(root, child)
 
+
 def set_attrs(graph, args):
+    """
+    Set the attributes of the graph
+
+    Args:
+        graph (AGraph): The graph to set the attributes of
+        args (namespace): A namespace containing the attributes we want to set
+    """
+
+    # Create attr dics
     node_attrs = {
         'shape': args.dir_shape,
         'color': args.color,
@@ -59,27 +109,81 @@ def set_attrs(graph, args):
         'label': args.name
     }
 
+    # and update the attrs with theirs values
     graph.node_attr.update(node_attrs)
     graph.graph_attr.update(graph_attrs)
 
+
 class File:
-    def __init__(self, fpath, parent=None):
-        self.name = fpath.name
-        self.fpath = fpath
+    """
+    A class that represents a file
+
+    Attrs:
+        name (str): The filename
+        apath (Path): The absolute path of the file
+        parent (File): The parent file (directory) of the file
+
+    Methods:
+        __init__(self, apath, parent=None):
+            The constructor of the class
+    """
+
+    def __init__(self, apath, parent=None):
+        """
+        Constructor of the File class
+
+        Args:
+            apath (Path): The absolute path of the file
+            parent (File, optional): The parent file (directory) of the file. Defaults to None.
+        """
+        self.name = apath.name
+        self.apath = apath
         self.parent = parent
 
 
 class Dir(File):
-    def __init__(self, fpath, parent=None):
-        super().__init__(fpath, parent)
+    """
+    A class that represents a directory.
+    Inherits from File.
+
+    Attrs:
+        name (str): The filename
+        apath (Path): The absolute path of the file
+        parent (File): The parent file (directory) of the file
+        children (list): The list of children files under the directory
+
+    Methods:
+        __init__(self, apath, parent=None):
+            The constructor of the class
+        __get_children(self):
+            Gets the list of children files under the directory
+    """
+
+    def __init__(self, apath, parent=None):
+        """
+        Contructor of the Dir class.
+        Calls the File class constructor.
+
+        Args:
+            apath (Path): The absolute path of the file
+            parent (File, optional): The parent file (directory) of the file. Defaults to None.
+        """
+        super().__init__(apath, parent)
         self.children = self.__get_children()
 
     def __get_children(self):
+        """
+        Returns the children that are under the directory in the file tree
+
+        Returns:
+            list: a list of File object that are under the directory in the file tree
+        """
         children = []
-        for file in os.scandir(self.fpath):
+        for file in os.scandir(self.apath):
             child_class = Dir if file.is_dir() else File
-            children.append(child_class(self.fpath.joinpath(file.name), self))
+            children.append(child_class(self.apath.joinpath(file.name), self))
         return children
 
 
-if __name__=="__main__": main()
+if __name__ == "__main__":
+    main()
